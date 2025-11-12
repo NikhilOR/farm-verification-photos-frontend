@@ -1,0 +1,77 @@
+{
+  "header": {
+    "title": "markhet",
+    "subtitle": "Upload Crop Photos"
+  },
+  "steps": {
+    "details": "Details",
+    "verify": "Verify",
+    "profile": "Profile"
+  },
+  "loading": {
+    "farmDetails": "Loading farm details..."
+  },
+  "cropCard": {
+    "cropNamePlaceholder": "Crop Name",
+    "cropDetailsTitle": "Crop Details",
+    "quantity": "Quantity",
+    "variety": "Variety",
+    "moisture": "Moisture %",
+    "willDry": "Will you dry it?"
+  },
+  "farmCard": {
+    "title": "Farm Details",
+    "fullName": "Full Name",
+    "phone": "Phone",
+    "village": "Village",
+    "taluk": "Taluk",
+    "district": "District"
+  },
+  "incorrectDetails": {
+    "text": "Incorrect details?",
+    "callUs": "Call us"
+  },
+  "guidelines": {
+    "title": "Crop Verification Guidelines:",
+    "points": [
+      "Only live pictures allowed. Please make sure you are in the farm while clicking the pictures.",
+      "Please click pictures of the mentioned crop only.",
+      "Make sure the crop is clearly visible."
+    ]
+  },
+  "cameraVerification": {
+    "title": "Camera Verification",
+    "instructions": "Capture 1-3 photos (minimum 1 required)",
+    "capturedPhotos": "Captured Photos ({count}/3) - Tap to view",
+    "cameraPreview": "Camera Preview",
+    "retake": "Retake"
+  },
+  "photoViewer": {
+    "altText": "Full view"
+  },
+  "step3": {
+    "title": "Verification Submitted!",
+    "message": "Thank you for submitting your farm verification. Our team will review your photos and location shortly."
+  },
+  "buttons": {
+    "startVerification": "Start verification",
+    "allowCameraAccess": "Allow Camera & Location",
+    "capturePhoto": "Capture Photo",
+    "captureAnother": "Capture Another",
+    "submit": "Submit",
+    "loading": "Loading...",
+    "submitting": "Submitting..."
+  },
+  "errors": {
+    "userIdRequired": "User ID is required",
+    "cropNameRequired": "Crop name is required",
+    "loadUserDataFailed": "Failed to load user data",
+    "cameraDenied": "Camera access denied or unavailable.",
+    "locationAccess": "Please allow location access to continue.",
+    "cameraLocationAccessFailed": "Unable to access camera or location.",
+    "noPhotoCaptured": "Please capture at least 1 photo before submitting.",
+    "userIdMissing": "User ID is missing. Cannot submit verification.",
+    "submitError": "An error occurred while submitting. Try again.",
+    "submissionFailed": "Submission failed."
+  }
+}

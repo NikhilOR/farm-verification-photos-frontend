@@ -19,8 +19,18 @@ type FormData = {
   location: { lat: number; lng: number } | null;
 };
 
+type VerificationStatus = {
+  hasVerification: boolean;
+  canSubmit: boolean;
+  status: string | null;
+  blockMessage: string | null;
+  existingRequestId?: string;
+  isResubmission?: boolean;
+};
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://markhet-internal-dev.onrender.com";
 const VERIFICATION_API_URL = process.env.NEXT_PUBLIC_VERIFICATION_API_URL || "http://localhost:5000/api/verifications/submit";
+const VERIFICATION_STATUS_URL = process.env.NEXT_PUBLIC_VERIFICATION_STATUS_URL || "http://localhost:5000/api/verifications/user";
 const SUPPORT_PHONE = process.env.NEXT_PUBLIC_SUPPORT_PHONE || "6206415125";
 const MAX_PHOTOS = 3;
 const CAMERA_WIDTH = 640;
@@ -48,12 +58,13 @@ export default function Home({
     location: null,
   });
 
-
   const [photoCaptured, setPhotoCaptured] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameraAllowed, setCameraAllowed] = useState(false);
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus | null>(null);
+  const [checkingStatus, setCheckingStatus] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -81,6 +92,42 @@ export default function Home({
       setStep(step - 1);
     }
   };
+
+  // Check verification status on mount
+  useEffect(() => {
+    const checkVerificationStatus = async () => {
+      if (!params.userId) {
+        setError(t("errors.userIdRequired"));
+        setCheckingStatus(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${VERIFICATION_STATUS_URL}/${params.userId}/current-status`
+        );
+        const result = await response.json();
+
+        if (response.ok && result.statusCode === 200) {
+          setVerificationStatus({
+            hasVerification: result.data.hasVerification,
+            canSubmit: result.data.canSubmit,
+            status: result.data.verification?.status || null,
+            blockMessage: result.data.blockMessage || null,
+            existingRequestId: result.data.verification?.id,
+          });
+        } else {
+          console.error("Failed to check status:", result);
+        }
+      } catch (err) {
+        console.error("Error checking verification status:", err);
+      } finally {
+        setCheckingStatus(false);
+      }
+    };
+
+    checkVerificationStatus();
+  }, [params.userId, t]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -294,6 +341,12 @@ export default function Home({
   };
 
   const handleStartVerification = () => {
+    // Check if user can submit based on verification status
+    if (verificationStatus && !verificationStatus.canSubmit) {
+      setError(verificationStatus.blockMessage || "Cannot submit new verification request");
+      return;
+    }
+    
     setError(null);
     setStep(2);
   };
@@ -306,6 +359,12 @@ export default function Home({
 
     if (!params.userId) {
       setError(t("errors.userIdMissing"));
+      return;
+    }
+
+    // Double-check submission eligibility
+    if (verificationStatus && !verificationStatus.canSubmit) {
+      setError(verificationStatus.blockMessage || "Cannot submit new verification request");
       return;
     }
 
@@ -357,9 +416,23 @@ export default function Home({
 
       const result = await res.json();
 
-      if (res.ok) {
+      // Handle different response scenarios based on backend logic
+      if (res.status === 409) {
+        // Status 409: Conflict - either pending or approved exists
+        setError(result.message || "Cannot submit verification request");
+        console.error("Submission blocked:", result);
+      } else if (res.ok && result.statusCode === 200) {
+        // Success - new verification created
+        console.log("Verification submitted:", result.data);
+        
+        // Check if this was a resubmission after rejection
+        if (result.data.isResubmission) {
+          console.log("This was a resubmission after previous rejection");
+        }
+        
         setStep(3);
       } else {
+        // Other errors
         setError(result.message || t("errors.submissionFailed"));
         console.error("Submission failed:", result);
       }
@@ -372,6 +445,18 @@ export default function Home({
   };
 
   const isMaize = formData.cropName?.toLowerCase() === "maize";
+
+  // Show loading state while checking verification status
+  if (checkingStatus) {
+    return (
+      <div className="min-h-screen bg-[#FFF9E4] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking verification status...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FFF9E4] flex flex-col relative pb-24">
@@ -495,6 +580,44 @@ export default function Home({
       <main className="flex-1 p-6 max-w-md mx-auto w-full relative z-10">
         {step === 1 && (
           <div className="space-y-6">
+            {/* Show verification status warning if cannot submit */}
+            {verificationStatus && !verificationStatus.canSubmit && (
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+                <div className="flex items-start">
+                  <svg className="w-6 h-6 text-yellow-600 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <h3 className="text-sm font-medium text-yellow-800 mb-1">
+                      {verificationStatus.status === "pending" ? "Verification Under Review" : "Already Verified"}
+                    </h3>
+                    <p className="text-sm text-yellow-700">
+                      {verificationStatus.blockMessage}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Show resubmission info if previous was rejected */}
+            {verificationStatus && verificationStatus.canSubmit && verificationStatus.status === "rejected" && (
+              <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg">
+                <div className="flex items-start">
+                  <svg className="w-6 h-6 text-blue-600 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <h3 className="text-sm font-medium text-blue-800 mb-1">
+                      Ready for Resubmission
+                    </h3>
+                    <p className="text-sm text-blue-700">
+                      Your previous request was reviewed. You can now submit a new verification request.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {loading ? (
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 flex items-center justify-center min-h-[200px]">
                 <div className="text-center">
@@ -761,14 +884,18 @@ export default function Home({
           <div className="max-w-md mx-auto">
             <button
               onClick={handleStartVerification}
-              disabled={loading}
+              disabled={loading || (verificationStatus ? !verificationStatus.canSubmit : false)}
               className={`w-full font-medium py-4 rounded-full transition-colors ${
-                loading
+                loading || (verificationStatus && !verificationStatus.canSubmit)
                   ? "bg-gray-400 cursor-not-allowed text-white"
                   : "bg-green-700 hover:bg-green-800 text-white"
               }`}
             >
-              {loading ? t("buttons.loading") : t("buttons.startVerification")}
+              {loading 
+                ? t("buttons.loading") 
+                : (verificationStatus && !verificationStatus.canSubmit)
+                ? "Cannot Start Verification"
+                : t("buttons.startVerification")}
             </button>
           </div>
         </div>

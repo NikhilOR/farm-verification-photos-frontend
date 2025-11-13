@@ -18,6 +18,13 @@ type FormData = {
   location: { lat: number; lng: number } | null;
 };
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://markhet-internal-dev.onrender.com";
+const VERIFICATION_API_URL = process.env.NEXT_PUBLIC_VERIFICATION_API_URL || "http://localhost:5000/api/verifications/submit";
+const SUPPORT_PHONE = process.env.NEXT_PUBLIC_SUPPORT_PHONE || "6206415125";
+const MAX_PHOTOS = 3;
+const CAMERA_WIDTH = 640;
+const CAMERA_HEIGHT = 480;
+
 export default function Home({
   params,
 }: {
@@ -51,20 +58,17 @@ export default function Home({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Set Kannada as default language on mount
   useEffect(() => {
     if (i18n.language !== 'kn') {
       i18n.changeLanguage('kn');
     }
-  }, []);
+  }, [i18n]);
 
-  // Language toggle function
   const toggleLanguage = () => {
     const newLang = i18n.language === 'en' ? 'kn' : 'en';
     i18n.changeLanguage(newLang);
   };
 
-  // Back button handler
   const handleGoBack = () => {
     if (step === 2) {
       stopCamera();
@@ -77,17 +81,13 @@ export default function Home({
     }
   };
 
-  // Fetch user data from API
   useEffect(() => {
     const fetchUserData = async () => {
-      const USER_ID = params.userId || "6cd7373d-bcc9-46fe-b43f-23182230f31f";
-      const CROP_NAME = params.cropName || "Tender Coconut";
-
-      if (!USER_ID) {
+      if (!params.userId) {
         setError(t("errors.userIdRequired"));
         return;
       }
-      if (!CROP_NAME) {
+      if (!params.cropName) {
         setError(t("errors.cropNameRequired"));
         return;
       }
@@ -95,7 +95,7 @@ export default function Home({
       setLoading(true);
       try {
         const response = await fetch(
-          `https://markhet-internal-dev.onrender.com/users/getbyid/${USER_ID}`
+          `${API_BASE_URL}/users/getbyid/${params.userId}`
         );
         const result = await response.json();
 
@@ -109,7 +109,7 @@ export default function Home({
               if (farm.crops && farm.crops.length > 0) {
                 const foundCrop = farm.crops.find(
                   (crop: any) =>
-                    crop.cropName?.toLowerCase() === CROP_NAME.toLowerCase()
+                    crop.cropName?.toLowerCase() === params.cropName.toLowerCase()
                 );
                 if (foundCrop) {
                   targetFarm = farm;
@@ -133,8 +133,7 @@ export default function Home({
             quantityDisplay = targetCrop.measure;
           }
 
-          const varietyValue =
-            targetCrop?.maizeVariety || targetCrop?.variety || "";
+          const varietyValue = targetCrop?.maizeVariety || targetCrop?.variety || "";
 
           setFormData((prev) => ({
             ...prev,
@@ -143,7 +142,7 @@ export default function Home({
             village: targetFarm?.village || user.village || "",
             taluk: targetFarm?.taluk || user.taluk || "",
             district: targetFarm?.district || user.district || "",
-            cropName: targetCrop?.cropName || CROP_NAME,
+            cropName: targetCrop?.cropName || params.cropName,
             quantity: quantityDisplay,
             variety: varietyValue,
             moisture: targetCrop?.moisturePercent?.toString() || "",
@@ -158,7 +157,7 @@ export default function Home({
           setError(result.message || t("errors.loadUserDataFailed"));
         }
       } catch (error: any) {
-        console.error("Fetch error:", error);
+        console.error("Failed to fetch user data:", error);
         setError(t("errors.loadUserDataFailed"));
       } finally {
         setLoading(false);
@@ -168,7 +167,6 @@ export default function Home({
     fetchUserData();
   }, [params.userId, params.cropName, t]);
 
-  // CAMERA CONTROL
   useEffect(() => {
     if (step === 2 && cameraAllowed && !photoCaptured) startCamera();
     return () => stopCamera();
@@ -179,8 +177,8 @@ export default function Home({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
+          width: { ideal: CAMERA_WIDTH },
+          height: { ideal: CAMERA_HEIGHT },
           facingMode: "user",
         },
         audio: false,
@@ -196,6 +194,7 @@ export default function Home({
         };
       }
     } catch (err) {
+      console.error("Camera access denied:", err);
       setError(t("errors.cameraDenied"));
     }
   };
@@ -207,6 +206,32 @@ export default function Home({
     }
     if (videoRef.current) videoRef.current.srcObject = null;
     setCameraReady(false);
+  };
+
+  const addWatermark = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.fillRect(10, 10, 140, 40);
+    ctx.font = "bold 24px Arial";
+    ctx.fillStyle = "#374151";
+    ctx.fillText("mark", 20, 38);
+    ctx.fillStyle = "#16a34a";
+    ctx.fillText("het", 80, 38);
+    ctx.fillStyle = "#16a34a";
+    ctx.fillText(".", 120, 38);
+
+    const now = new Date();
+    const timestamp = now.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(canvas.width - 200, canvas.height - 35, 190, 25);
+    ctx.font = "12px Arial";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(timestamp, canvas.width - 195, canvas.height - 17);
   };
 
   const capturePhoto = () => {
@@ -221,34 +246,11 @@ export default function Home({
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
-    ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Watermark
-    if (ctx) {
-      ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.fillRect(10, 10, 140, 40);
-      ctx.font = "bold 24px Arial";
-      ctx.fillStyle = "#374151";
-      ctx.fillText("mark", 20, 38);
-      ctx.fillStyle = "#16a34a";
-      ctx.fillText("het", 80, 38);
-      ctx.fillStyle = "#16a34a";
-      ctx.fillText(".", 120, 38);
-
-      const now = new Date();
-      const timestamp = now.toLocaleString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      ctx.fillStyle = "rgba(0,0,0,0.6)";
-      ctx.fillRect(canvas.width - 200, canvas.height - 35, 190, 25);
-      ctx.font = "12px Arial";
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText(timestamp, canvas.width - 195, canvas.height - 17);
-    }
+    
+    if (!ctx) return;
+    
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    addWatermark(ctx, canvas);
 
     const dataUrl = canvas.toDataURL("image/jpeg");
     setFormData((prev) => ({ ...prev, photos: [...prev.photos, dataUrl] }));
@@ -285,6 +287,7 @@ export default function Home({
       }
       setCameraAllowed(true);
     } catch (err) {
+      console.error("Failed to access camera/location:", err);
       setError(t("errors.cameraLocationAccessFailed"));
     }
   };
@@ -300,8 +303,7 @@ export default function Home({
       return;
     }
 
-    const USER_ID = params.userId || "fcb0bced-a678-46cc-94d8-bc3add57cd98";
-    if (!USER_ID || USER_ID === "undefined") {
+    if (!params.userId) {
       setError(t("errors.userIdMissing"));
       return;
     }
@@ -326,7 +328,7 @@ export default function Home({
       );
 
       const uploadData = new FormData();
-      uploadData.append("userId", USER_ID);
+      uploadData.append("userId", params.userId);
       uploadData.append("cropName", formData.cropName);
       uploadData.append("fullName", formData.fullName);
       uploadData.append("phone", formData.phone);
@@ -347,15 +349,10 @@ export default function Home({
       uploadData.append("location", JSON.stringify(formData.location));
       compressedPhotos.forEach((file) => uploadData.append("photos", file));
 
-      console.log("Submitting with userId:", USER_ID);
-
-      const res = await fetch(
-        "http://localhost:5000/api/verifications/submit",
-        {
-          method: "POST",
-          body: uploadData,
-        }
-      );
+      const res = await fetch(VERIFICATION_API_URL, {
+        method: "POST",
+        body: uploadData,
+      });
 
       const result = await res.json();
 
@@ -363,10 +360,10 @@ export default function Home({
         setStep(3);
       } else {
         setError(result.message || t("errors.submissionFailed"));
-        console.error("Submission error:", result);
+        console.error("Submission failed:", result);
       }
     } catch (err) {
-      console.error("Submit error:", err);
+      console.error("Submission error:", err);
       setError(t("errors.submitError"));
     } finally {
       setLoading(false);
@@ -377,7 +374,7 @@ export default function Home({
 
   return (
     <div className="min-h-screen bg-[#FFF9E4] flex flex-col relative pb-24">
-      {/* Watermark Overlay */}
+      {/* Background Watermark */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-[0.08]">
         <div className="absolute inset-0">
           {[...Array(100)].map((_, i) => {
@@ -400,10 +397,9 @@ export default function Home({
         </div>
       </div>
 
-      {/* Header with Language Switcher and Back Button */}
+      {/* Header */}
       <header className="bg-white border-b border-gray-200 py-4 px-6 relative z-10">
         <div className="flex justify-between items-center max-w-md mx-auto">
-          {/* Back Button */}
           <div className="flex-1">
             {step > 1 && step < 3 && (
               <button
@@ -428,7 +424,6 @@ export default function Home({
             </h2>
           </div>
 
-          {/* Language Switcher Button */}
           <div className="flex-1 flex justify-end">
             <button
               onClick={toggleLanguage}
@@ -441,7 +436,7 @@ export default function Home({
         </div>
       </header>
 
-      {/* Steps UI */}
+      {/* Progress Steps */}
       <div className="flex justify-center items-center py-6 bg-gray-100 border-b relative z-10">
         <div className="flex items-center max-w-md w-full px-6">
           {["details", "verify", "profile"].map((label, i) => {
@@ -495,9 +490,8 @@ export default function Home({
         </div>
       </div>
 
-      {/* MAIN CONTENT */}
+      {/* Main Content */}
       <main className="flex-1 p-6 max-w-md mx-auto w-full relative z-10">
-        {/* STEP 1 */}
         {step === 1 && (
           <div className="space-y-6">
             {loading ? (
@@ -509,7 +503,6 @@ export default function Home({
               </div>
             ) : (
               <>
-                {/* Crop Name Header */}
                 <div className="flex items-center justify-center gap-3 bg-blue-50 rounded-2xl py-4 shadow-md">
                   <span className="text-green-700 text-3xl">🌾</span>
                   <h2 className="text-2xl font-bold text-green-700">
@@ -517,7 +510,6 @@ export default function Home({
                   </h2>
                 </div>
 
-                {/* Crop Details Card */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
                   <h2 className="text-lg font-semibold text-gray-800 mb-4">
                     {t("cropCard.cropDetailsTitle")}
@@ -558,7 +550,6 @@ export default function Home({
                   </div>
                 </div>
 
-                {/* Farm Details Card */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
                   <h2 className="text-lg font-semibold text-gray-800 mb-4">
                     {t("farmCard.title")}
@@ -597,12 +588,11 @@ export default function Home({
                   </div>
                 </div>
 
-                {/* Incorrect Details Call Link */}
                 <div className="bg-blue-50 rounded-xl p-4 border border-blue-200 text-center">
                   <p className="text-xl text-red-700">
                     {t("incorrectDetails.text")}{" "}
                     <a
-                      href="tel:6206415125"
+                      href={`tel:${SUPPORT_PHONE}`}
                       className="text-blue-600 font-semibold hover:text-blue-700 underline"
                     >
                       {t("incorrectDetails.callUs")}
@@ -610,7 +600,6 @@ export default function Home({
                   </p>
                 </div>
 
-                {/* Guidelines Section */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-800 mb-4">
                     {t("guidelines.title")}
@@ -634,7 +623,6 @@ export default function Home({
           </div>
         )}
 
-        {/* STEP 2 CAMERA & SUBMIT */}
         {step === 2 && (
           <div className="space-y-6">
             {!cameraAllowed && (
@@ -734,7 +722,6 @@ export default function Home({
           </div>
         )}
 
-        {/* STEP 3 SUCCESS */}
         {step === 3 && (
           <div className="flex flex-col items-center justify-center space-y-4 min-h-[300px] text-center">
             <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center">
@@ -762,7 +749,6 @@ export default function Home({
         )}
       </main>
 
-      {/* Fixed Bottom Button - Step 1 */}
       {step === 1 && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-20">
           <div className="max-w-md mx-auto">
@@ -781,7 +767,6 @@ export default function Home({
         </div>
       )}
 
-      {/* Fixed Bottom Button - Step 2 */}
       {step === 2 && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-20">
           <div className="max-w-md mx-auto">
@@ -801,7 +786,7 @@ export default function Home({
               </button>
             ) : (
               <div className="flex gap-2">
-                {formData.photos.length < 3 && (
+                {formData.photos.length < MAX_PHOTOS && (
                   <button
                     onClick={captureAnother}
                     className="flex-1 font-medium py-4 rounded-full bg-green-700 hover:bg-green-800 text-white transition-colors"
@@ -824,7 +809,6 @@ export default function Home({
         </div>
       )}
 
-      {/* Photo Viewer Modal */}
       {viewingPhoto && (
         <div
           className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"

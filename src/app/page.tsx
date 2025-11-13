@@ -36,20 +36,22 @@ const MAX_PHOTOS = 3;
 const CAMERA_WIDTH = 640;
 const CAMERA_HEIGHT = 480;
 
+// Update the component signature to accept Promise params
 export default function Home({
   params,
 }: {
-  params: { userId: string; cropName: string };
+  params: Promise<{ userId: string; cropName: string }>;
 }) {
   const { t, i18n } = useTranslation();
   const [step, setStep] = useState(1);
+  const [resolvedParams, setResolvedParams] = useState<{ userId: string; cropName: string } | null>(null);
   const [formData, setFormData] = useState<FormData>({
     fullName: "",
     phone: "",
     village: "",
     taluk: "",
     district: "",
-    cropName: params.cropName || "",
+    cropName: "",
     quantity: "",
     variety: "",
     moisture: "",
@@ -69,6 +71,17 @@ export default function Home({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // Resolve params first
+  useEffect(() => {
+    params.then((resolved) => {
+      setResolvedParams(resolved);
+      setFormData((prev) => ({
+        ...prev,
+        cropName: resolved.cropName || "",
+      }));
+    });
+  }, [params]);
 
   useEffect(() => {
     if (i18n.language !== 'kn') {
@@ -95,8 +108,10 @@ export default function Home({
 
   // Check verification status on mount
   useEffect(() => {
+    if (!resolvedParams) return;
+
     const checkVerificationStatus = async () => {
-      if (!params.userId) {
+      if (!resolvedParams.userId) {
         setError(t("errors.userIdRequired"));
         setCheckingStatus(false);
         return;
@@ -104,7 +119,7 @@ export default function Home({
 
       try {
         const response = await fetch(
-          `${VERIFICATION_STATUS_URL}/${params.userId}/current-status`
+          `${VERIFICATION_STATUS_URL}/${resolvedParams.userId}/current-status`
         );
         const result = await response.json();
 
@@ -127,15 +142,17 @@ export default function Home({
     };
 
     checkVerificationStatus();
-  }, [params.userId, t]);
+  }, [resolvedParams, t]);
 
   useEffect(() => {
+    if (!resolvedParams) return;
+
     const fetchUserData = async () => {
-      if (!params.userId) {
+      if (!resolvedParams.userId) {
         setError(t("errors.userIdRequired"));
         return;
       }
-      if (!params.cropName) {
+      if (!resolvedParams.cropName) {
         setError(t("errors.cropNameRequired"));
         return;
       }
@@ -143,7 +160,7 @@ export default function Home({
       setLoading(true);
       try {
         const response = await fetch(
-          `${API_BASE_URL}/users/getbyid/${params.userId}`
+          `${API_BASE_URL}/users/getbyid/${resolvedParams.userId}`
         );
         const result = await response.json();
 
@@ -157,7 +174,7 @@ export default function Home({
               if (farm.crops && farm.crops.length > 0) {
                 const foundCrop = farm.crops.find(
                   (crop: { cropName?: string }) =>
-                    crop.cropName?.toLowerCase() === params.cropName.toLowerCase()
+                    crop.cropName?.toLowerCase() === resolvedParams.cropName.toLowerCase()
                 );
                 if (foundCrop) {
                   targetFarm = farm;
@@ -190,7 +207,7 @@ export default function Home({
             village: targetFarm?.village || user.village || "",
             taluk: targetFarm?.taluk || user.taluk || "",
             district: targetFarm?.district || user.district || "",
-            cropName: targetCrop?.cropName || params.cropName,
+            cropName: targetCrop?.cropName || resolvedParams.cropName,
             quantity: quantityDisplay,
             variety: varietyValue,
             moisture: targetCrop?.moisturePercent?.toString() || "",
@@ -213,7 +230,7 @@ export default function Home({
     };
 
     fetchUserData();
-  }, [params.userId, params.cropName, t]);
+  }, [resolvedParams, t]);
 
   useEffect(() => {
     if (step === 2 && cameraAllowed && !photoCaptured) {
@@ -341,7 +358,6 @@ export default function Home({
   };
 
   const handleStartVerification = () => {
-    // Check if user can submit based on verification status
     if (verificationStatus && !verificationStatus.canSubmit) {
       setError(verificationStatus.blockMessage || "Cannot submit new verification request");
       return;
@@ -352,17 +368,18 @@ export default function Home({
   };
 
   const handleSubmit = async () => {
+    if (!resolvedParams) return;
+
     if (formData.photos.length === 0) {
       setError(t("errors.noPhotoCaptured"));
       return;
     }
 
-    if (!params.userId) {
+    if (!resolvedParams.userId) {
       setError(t("errors.userIdMissing"));
       return;
     }
 
-    // Double-check submission eligibility
     if (verificationStatus && !verificationStatus.canSubmit) {
       setError(verificationStatus.blockMessage || "Cannot submit new verification request");
       return;
@@ -388,7 +405,7 @@ export default function Home({
       );
 
       const uploadData = new FormData();
-      uploadData.append("userId", params.userId);
+      uploadData.append("userId", resolvedParams.userId);
       uploadData.append("cropName", formData.cropName);
       uploadData.append("fullName", formData.fullName);
       uploadData.append("phone", formData.phone);
@@ -416,23 +433,18 @@ export default function Home({
 
       const result = await res.json();
 
-      // Handle different response scenarios based on backend logic
       if (res.status === 409) {
-        // Status 409: Conflict - either pending or approved exists
         setError(result.message || "Cannot submit verification request");
         console.error("Submission blocked:", result);
       } else if (res.ok && result.statusCode === 200) {
-        // Success - new verification created
         console.log("Verification submitted:", result.data);
         
-        // Check if this was a resubmission after rejection
         if (result.data.isResubmission) {
           console.log("This was a resubmission after previous rejection");
         }
         
         setStep(3);
       } else {
-        // Other errors
         setError(result.message || t("errors.submissionFailed"));
         console.error("Submission failed:", result);
       }
@@ -446,13 +458,13 @@ export default function Home({
 
   const isMaize = formData.cropName?.toLowerCase() === "maize";
 
-  // Show loading state while checking verification status
-  if (checkingStatus) {
+  // Show loading state while params are being resolved or status is being checked
+  if (!resolvedParams || checkingStatus) {
     return (
       <div className="min-h-screen bg-[#FFF9E4] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Checking verification status...</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );

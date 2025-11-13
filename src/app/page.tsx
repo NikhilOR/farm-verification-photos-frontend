@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 import imageCompression from "browser-image-compression";
 import { useTranslation } from "react-i18next";
 
@@ -47,7 +48,7 @@ export default function Home({
     location: null,
   });
 
-  const [cameraReady, setCameraReady] = useState(false);
+
   const [photoCaptured, setPhotoCaptured] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameraAllowed, setCameraAllowed] = useState(false);
@@ -108,7 +109,7 @@ export default function Home({
             for (const farm of user.farms) {
               if (farm.crops && farm.crops.length > 0) {
                 const foundCrop = farm.crops.find(
-                  (crop: any) =>
+                  (crop: { cropName?: string }) =>
                     crop.cropName?.toLowerCase() === params.cropName.toLowerCase()
                 );
                 if (foundCrop) {
@@ -156,7 +157,7 @@ export default function Home({
         } else {
           setError(result.message || t("errors.loadUserDataFailed"));
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error("Failed to fetch user data:", error);
         setError(t("errors.loadUserDataFailed"));
       } finally {
@@ -168,7 +169,9 @@ export default function Home({
   }, [params.userId, params.cropName, t]);
 
   useEffect(() => {
-    if (step === 2 && cameraAllowed && !photoCaptured) startCamera();
+    if (step === 2 && cameraAllowed && !photoCaptured) {
+      startCamera();
+    }
     return () => stopCamera();
   }, [step, cameraAllowed, photoCaptured]);
 
@@ -190,7 +193,6 @@ export default function Home({
         videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = async () => {
           await videoRef.current?.play();
-          setCameraReady(true);
         };
       }
     } catch (err) {
@@ -205,7 +207,6 @@ export default function Home({
       streamRef.current = null;
     }
     if (videoRef.current) videoRef.current.srcObject = null;
-    setCameraReady(false);
   };
 
   const addWatermark = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
@@ -656,11 +657,14 @@ export default function Home({
                 <div className="grid grid-cols-3 gap-2">
                   {formData.photos.map((photo, idx) => (
                     <div key={idx} className="relative group">
-                      <img
+                      <Image
                         src={photo}
                         alt={`Photo ${idx + 1}`}
+                        width={96}
+                        height={96}
                         onClick={() => setViewingPhoto(photo)}
                         className="w-full h-24 object-cover rounded-lg border-2 border-green-600 cursor-pointer hover:opacity-80 transition-opacity"
+                        unoptimized
                       />
                       <button
                         onClick={(e) => {
@@ -691,10 +695,13 @@ export default function Home({
                     playsInline
                   />
                 ) : photoCaptured && formData.photos.length > 0 ? (
-                  <img
+                  <Image
                     src={formData.photos[formData.photos.length - 1]}
                     alt="Preview"
+                    width={640}
+                    height={256}
                     className="w-full h-full object-cover rounded-lg"
+                    unoptimized
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full text-gray-400">
@@ -821,11 +828,14 @@ export default function Home({
             >
               ×
             </button>
-            <img
+            <Image
               src={viewingPhoto}
               alt={t("photoViewer.altText")}
+              width={1200}
+              height={900}
               className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
               onClick={(e) => e.stopPropagation()}
+              unoptimized
             />
           </div>
         </div>

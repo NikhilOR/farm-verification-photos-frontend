@@ -242,7 +242,7 @@ export default function Home() {
         video: {
           width: { ideal: CAMERA_WIDTH },
           height: { ideal: CAMERA_HEIGHT },
-          facingMode: "user",
+          facingMode: { exact: "environment" }, // 🔄 CHANGED: Use rear camera
         },
         audio: false,
       });
@@ -517,7 +517,7 @@ export default function Home() {
             <h1 className="text-3xl font-semibold tracking-wide">
               mark<span className="text-green-600 font-bold">het</span>
             </h1>
-            <h2 className="text-2xl text-green-700 mt-2 font-medium">
+            <h2 className="text-2xl text-green-700 mt-2 font-medium whitespace-nowrap">
               {t("header.subtitle")}
             </h2>
           </div>

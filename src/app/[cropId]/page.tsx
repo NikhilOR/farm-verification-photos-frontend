@@ -48,10 +48,10 @@ const CAMERA_HEIGHT = 480;
 export default function Home() {
   const { t, i18n } = useTranslation();
   const params = useParams();
-  
+
   // 🔄 CHANGED: Extract only cropId from params
   const cropId = typeof params?.cropId === "string" ? params.cropId : "";
-  
+
   // 🆕 NEW: Store userId (will be fetched from API)
   const [userId, setUserId] = useState<string>("");
 
@@ -133,7 +133,9 @@ export default function Home() {
           // 🆕 NEW: Extract and store userId
           setUserId(userData.id);
 
-          console.log(`✅ Fetched crop data for cropId: ${cropId}, userId: ${userData.id}`);
+          console.log(
+            `✅ Fetched crop data for cropId: ${cropId}, userId: ${userData.id}`
+          );
 
           // 🔄 CHANGED: Build quantity display
           let quantityDisplay = "";
@@ -146,7 +148,8 @@ export default function Home() {
           }
 
           // 🔄 CHANGED: Get variety value
-          const varietyValue = cropData.maizeVariety || cropData.otherVarietyName || "";
+          const varietyValue =
+            cropData.maizeVariety || cropData.otherVarietyName || "";
 
           // 🔄 CHANGED: Extract coordinates from farm
           let location = null;
@@ -168,15 +171,20 @@ export default function Home() {
             quantity: quantityDisplay,
             variety: varietyValue,
             moisture: cropData.moisturePercent?.toString() || "",
-            willDry: cropData.willYouDryIt === true
-              ? "Yes"
-              : cropData.willYouDryIt === false
-              ? "No"
-              : "",
+            willDry:
+              cropData.willYouDryIt === true
+                ? "Yes"
+                : cropData.willYouDryIt === false
+                ? "No"
+                : "",
             location: location,
           }));
         } else {
-          setError(result.message || t("errors.loadCropDataFailed") || "Failed to load crop data");
+          setError(
+            result.message ||
+              t("errors.loadCropDataFailed") ||
+              "Failed to load crop data"
+          );
         }
       } catch (error) {
         console.error("Failed to fetch crop data:", error);
@@ -269,7 +277,10 @@ export default function Home() {
     if (videoRef.current) videoRef.current.srcObject = null;
   };
 
-  const addWatermark = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
+  const addWatermark = (
+    ctx: CanvasRenderingContext2D,
+    canvas: HTMLCanvasElement
+  ) => {
     ctx.fillStyle = "rgba(255,255,255,0.7)";
     ctx.fillRect(10, 10, 140, 40);
     ctx.font = "bold 24px Arial";
@@ -355,7 +366,10 @@ export default function Home() {
 
   const handleStartVerification = () => {
     if (verificationStatus && !verificationStatus.canSubmit) {
-      setError(verificationStatus.blockMessage || "Cannot submit new verification request");
+      setError(
+        verificationStatus.blockMessage ||
+          "Cannot submit new verification request"
+      );
       return;
     }
 
@@ -376,7 +390,10 @@ export default function Home() {
     }
 
     if (verificationStatus && !verificationStatus.canSubmit) {
-      setError(verificationStatus.blockMessage || "Cannot submit new verification request");
+      setError(
+        verificationStatus.blockMessage ||
+          "Cannot submit new verification request"
+      );
       return;
     }
 
@@ -400,10 +417,10 @@ export default function Home() {
       );
 
       const uploadData = new FormData();
-      
+
       // 🔄 CHANGED: Send cropId instead of userId and cropName
       uploadData.append("cropId", cropId);
-      
+
       // 🔄 CHANGED: These are now optional (backend will fetch from API)
       uploadData.append("fullName", formData.fullName);
       uploadData.append("phone", formData.phone);
@@ -459,12 +476,65 @@ export default function Home() {
   const isMaize = formData.cropName?.toLowerCase() === "maize";
 
   // 🔄 CHANGED: Show loading state while checking cropId and status
-  if (!cropId || checkingStatus || (loading && !formData.cropName)) {
+  if (!cropId || checkingStatus) {
     return (
       <div className="min-h-screen bg-[#FFF9E4] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 🆕 NEW: Show error state if crop data failed to load
+  if (error && !formData.cropName && !loading) {
+    return (
+      <div className="min-h-screen bg-[#FFF9E4] flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg
+              className="w-8 h-8 text-red-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </div>
+
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">
+            {t("errors.cropNotFoundTitle") || "Crop Not Found"}
+          </h2>
+
+          <p className="text-gray-600 mb-6">{error}</p>
+
+          <a
+            href={`tel:${SUPPORT_PHONE}`}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+              />
+            </svg>
+            {t("incorrectDetails.callUs") || "Call Support"}
+          </a>
         </div>
       </div>
     );
@@ -497,38 +567,65 @@ export default function Home() {
 
       {/* Header */}
       <header className="bg-white border-b border-gray-200 py-4 px-6 relative z-10">
-        <div className="flex justify-between items-center max-w-md mx-auto">
-          <div className="flex-1">
-            {step > 1 && step < 3 && (
-              <button
-                onClick={handleGoBack}
-                className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 transition-colors"
-                aria-label="Go Back"
+        <div className="max-w-md mx-auto">
+          {/* Back button (if needed) */}
+          {step > 1 && step < 3 && (
+            <button
+              onClick={handleGoBack}
+              className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:text-gray-900 transition-colors mb-3"
+              aria-label="Go Back"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                <span className="text-base font-medium">{t("Back") || "Back"}</span>
-              </button>
-            )}
-          </div>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+              <span className="text-base font-medium">
+                {t("Back") || "Back"}
+              </span>
+            </button>
+          )}
 
-          <div className="flex-1 text-center">
-            <h1 className="text-3xl font-semibold tracking-wide">
-              mark<span className="text-green-600 font-bold">het</span>
-            </h1>
-            <h2 className="text-2xl text-green-700 mt-2 font-medium whitespace-nowrap">
-              {t("header.subtitle")}
-            </h2>
-          </div>
+          {/* Main header layout */}
+          <div className="flex justify-between items-start">
+            {/* Left: Logo and subtitle */}
+            <div className="flex-1">
+              <h1 className="text-2xl font-semibold tracking-wide">
+                mark<span className="text-green-600 font-bold">het</span>
+              </h1>
+              <h2 className="text-base text-gray-600 mt-1">
+                {t("header.subtitle")}
+              </h2>
+            </div>
 
-          <div className="flex-1 flex justify-end">
+            {/* Right: Language switcher with globe icon */}
             <button
               onClick={toggleLanguage}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors shadow-sm"
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors shadow-sm ml-4"
               aria-label="Switch Language"
             >
-              {i18n.language === "en" ? "ಕನ್ನಡ" : "English"}
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"
+                />
+              </svg>
+              <span>{i18n.language === "en" ? "ಕನ್ನಡ" : "English"}</span>
             </button>
           </div>
         </div>
@@ -596,12 +693,22 @@ export default function Home() {
             {verificationStatus && !verificationStatus.canSubmit && (
               <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
                 <div className="flex items-start">
-                  <svg className="w-6 h-6 text-yellow-600 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  <svg
+                    className="w-6 h-6 text-yellow-600 mr-3 flex-shrink-0"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                   <div>
                     <h3 className="text-sm font-medium text-yellow-800 mb-1">
-                      {verificationStatus.status === "pending" ? "Verification Under Review" : "Already Verified"}
+                      {verificationStatus.status === "pending"
+                        ? "Verification Under Review"
+                        : "Already Verified"}
                     </h3>
                     <p className="text-sm text-yellow-700">
                       {verificationStatus.blockMessage}
@@ -612,23 +719,34 @@ export default function Home() {
             )}
 
             {/* Show resubmission info if previous was rejected */}
-            {verificationStatus && verificationStatus.canSubmit && verificationStatus.status === "rejected" && (
-              <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg">
-                <div className="flex items-start">
-                  <svg className="w-6 h-6 text-blue-600 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                  <div>
-                    <h3 className="text-sm font-medium text-blue-800 mb-1">
-                      Ready for Resubmission
-                    </h3>
-                    <p className="text-sm text-blue-700">
-                      Your previous request was reviewed. You can now submit a new verification request.
-                    </p>
+            {verificationStatus &&
+              verificationStatus.canSubmit &&
+              verificationStatus.status === "rejected" && (
+                <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg">
+                  <div className="flex items-start">
+                    <svg
+                      className="w-6 h-6 text-blue-600 mr-3 flex-shrink-0"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <div>
+                      <h3 className="text-sm font-medium text-blue-800 mb-1">
+                        Ready for Resubmission
+                      </h3>
+                      <p className="text-sm text-blue-700">
+                        Your previous request was reviewed. You can now submit a
+                        new verification request.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {loading ? (
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 flex items-center justify-center min-h-[200px]">
@@ -652,13 +770,17 @@ export default function Home() {
                   </h2>
                   <div className="space-y-3">
                     <div className="flex justify-between items-start">
-                      <span className="text-sm text-gray-500">{t("cropCard.quantity")}</span>
+                      <span className="text-sm text-gray-500">
+                        {t("cropCard.quantity")}
+                      </span>
                       <span className="text-base text-gray-900 font-medium text-right">
                         {formData.quantity || "-"}
                       </span>
                     </div>
                     <div className="flex justify-between items-start">
-                      <span className="text-sm text-gray-500">{t("cropCard.variety")}</span>
+                      <span className="text-sm text-gray-500">
+                        {t("cropCard.variety")}
+                      </span>
                       <span className="text-base text-gray-900 font-medium text-right">
                         {formData.variety || "-"}
                       </span>
@@ -692,31 +814,41 @@ export default function Home() {
                   </h2>
                   <div className="space-y-3">
                     <div className="flex justify-between items-start">
-                      <span className="text-sm text-gray-500">{t("farmCard.fullName")}</span>
+                      <span className="text-sm text-gray-500">
+                        {t("farmCard.fullName")}
+                      </span>
                       <span className="text-base text-gray-900 font-medium text-right">
                         {formData.fullName || "-"}
                       </span>
                     </div>
                     <div className="flex justify-between items-start">
-                      <span className="text-sm text-gray-500">{t("farmCard.phone")}</span>
+                      <span className="text-sm text-gray-500">
+                        {t("farmCard.phone")}
+                      </span>
                       <span className="text-base text-gray-900 font-medium text-right">
                         {formData.phone ? `+91 ${formData.phone}` : "-"}
                       </span>
                     </div>
                     <div className="flex justify-between items-start">
-                      <span className="text-sm text-gray-500">{t("farmCard.village")}</span>
+                      <span className="text-sm text-gray-500">
+                        {t("farmCard.village")}
+                      </span>
                       <span className="text-base text-gray-900 font-medium text-right">
                         {formData.village || "-"}
                       </span>
                     </div>
                     <div className="flex justify-between items-start">
-                      <span className="text-sm text-gray-500">{t("farmCard.taluk")}</span>
+                      <span className="text-sm text-gray-500">
+                        {t("farmCard.taluk")}
+                      </span>
                       <span className="text-base text-gray-900 font-medium text-right">
                         {formData.taluk || "-"}
                       </span>
                     </div>
                     <div className="flex justify-between items-start">
-                      <span className="text-sm text-gray-500">{t("farmCard.district")}</span>
+                      <span className="text-sm text-gray-500">
+                        {t("farmCard.district")}
+                      </span>
                       <span className="text-base text-gray-900 font-medium text-right">
                         {formData.district || "-"}
                       </span>
@@ -741,14 +873,16 @@ export default function Home() {
                     {t("guidelines.title")}
                   </h3>
                   <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-                    {(t("guidelines.points", { returnObjects: true }) as string[]).map(
-                      (text: string, i: number) => (
-                        <div key={i} className="flex gap-3">
-                          <span className="text-gray-700 text-sm mt-0.5">•</span>
-                          <p className="text-sm text-gray-700 flex-1">{text}</p>
-                        </div>
-                      )
-                    )}
+                    {(
+                      t("guidelines.points", {
+                        returnObjects: true,
+                      }) as string[]
+                    ).map((text: string, i: number) => (
+                      <div key={i} className="flex gap-3">
+                        <span className="text-gray-700 text-sm mt-0.5">•</span>
+                        <p className="text-sm text-gray-700 flex-1">{text}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </>
@@ -769,14 +903,14 @@ export default function Home() {
                   {t("guidelines.title")}
                 </h3>
                 <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-                  {(t("guidelines.points", { returnObjects: true }) as string[]).map(
-                    (text: string, i: number) => (
-                      <div key={i} className="flex gap-3">
-                        <span className="text-gray-700 text-sm mt-0.5">•</span>
-                        <p className="text-sm text-gray-700 flex-1">{text}</p>
-                      </div>
-                    )
-                  )}
+                  {(
+                    t("guidelines.points", { returnObjects: true }) as string[]
+                  ).map((text: string, i: number) => (
+                    <div key={i} className="flex gap-3">
+                      <span className="text-gray-700 text-sm mt-0.5">•</span>
+                      <p className="text-sm text-gray-700 flex-1">{text}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -791,7 +925,10 @@ export default function Home() {
             {formData.photos.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs text-gray-500 font-medium">
-                  {t("cameraVerification.capturedPhotos").replace("{count}", formData.photos.length.toString())}
+                  {t("cameraVerification.capturedPhotos").replace(
+                    "{count}",
+                    formData.photos.length.toString()
+                  )}
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   {formData.photos.map((photo, idx) => (
@@ -843,8 +980,14 @@ export default function Home() {
                     unoptimized
                   />
                 ) : (
-                  <div className="flex items-center justify-center h-full text-gray-400">
-                    {t("cameraVerification.cameraPreview")}
+                  <div className="flex flex-col items-center justify-center h-full text-gray-500 px-6">
+                    <svg className="w-16 h-16 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <p className="text-sm text-center font-medium">
+                      {t("cameraVerification.activateCameraPrompt")}
+                    </p>
                   </div>
                 )}
                 <canvas ref={canvasRef} className="hidden" />
@@ -888,9 +1031,7 @@ export default function Home() {
             <h2 className="text-xl font-semibold text-gray-800">
               {t("step3.title")}
             </h2>
-            <p className="text-gray-600 max-w-xs">
-              {t("step3.message")}
-            </p>
+            <p className="text-gray-600 max-w-xs">{t("step3.message")}</p>
           </div>
         )}
       </main>
@@ -900,7 +1041,10 @@ export default function Home() {
           <div className="max-w-md mx-auto">
             <button
               onClick={handleStartVerification}
-              disabled={loading || (verificationStatus ? !verificationStatus.canSubmit : false)}
+              disabled={
+                loading ||
+                (verificationStatus ? !verificationStatus.canSubmit : false)
+              }
               className={`w-full font-medium py-4 rounded-full transition-colors ${
                 loading || (verificationStatus && !verificationStatus.canSubmit)
                   ? "bg-gray-400 cursor-not-allowed text-white"

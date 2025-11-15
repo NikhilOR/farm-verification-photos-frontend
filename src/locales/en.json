@@ -44,6 +44,7 @@
     "instructions": "Capture 1-3 photos (minimum 1 required)",
     "capturedPhotos": "Captured Photos ({count}/3) - Tap to view",
     "cameraPreview": "Camera Preview",
+    "activateCameraPrompt": "Click on the below button to activate camera",
     "retake": "Retake"
   },
   "photoViewer": {
